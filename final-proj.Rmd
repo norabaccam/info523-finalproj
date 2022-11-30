@@ -1,0 +1,83 @@
+---
+title: "INFO 523 Final Project R Code"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+```
+
+```{r}
+fetalhealth <- read.csv("fetal_health.csv") %>% 
+  select(-c(starts_with("histogram"), fetal_health))
+
+data <- read.csv("fetal_health.csv")
+```
+
+```{r}
+data$fetal_health=as.factor(data$fetal_health)
+
+data = data %>% 
+mutate(fetal_health = recode(fetal_health, "1" = 'Normal', "2" = 'Suspect', "3" =  'Pathological' ))
+
+ggplot(aes(x=fetal_health,fill=fetal_health,y=`baseline value`),data=data)+
+  geom_boxplot() + 
+  labs(x="Fetal Health",y="Baseline Heart Rate",
+title="Baseline Heart Rates Among Fetus Health Groups")
+```
+
+```{r}
+ggplot(fetalhealth) +
+  aes(x= baseline.value) +
+  geom_histogram(bins = 30, fill = "#0c4c8a") +
+  theme_minimal()
+```
+
+```{r}
+get_pvalues <- function(opp) {
+  values <- list()
+  for (col in colnames(fetalhealth)) {
+    if (opp == TRUE) {
+      pval <- grubbs.test(fetalhealth[[col]], opposite = TRUE)$p.value
+      values <- append(values, pval)
+    } else if (opp == FALSE) {
+      pval <- grubbs.test(fetalhealth[[col]])$p.value
+      values <- append(values, pval)
+    }
+  }
+  return(values)
+}
+```
+
+
+```{r}
+#install.packages("outliers")
+library(outliers)
+
+#grubbs.test(fetalhealth$accelerations)
+#grubbs.test(fetalhealth$fetal_movement)
+#colnames(fetalhealth)
+min.pvalues <- get_pvalues(FALSE)
+max.pvalues <- get_pvalues(TRUE)
+
+grubb_tests_df <- as.data.frame(cbind(colnames(fetalhealth), min.pvalues, c(""), max.pvalues))
+names(grubb_tests_df) <- c("Variable", "Minimum value outlier p-value", "", "Maximum value outlier p-value")
+```
+
+
+```{r}
+knitr::kable(grubb_tests_df, align='c')
+```
+
+
+```{r}
+dat <- cor(fetalhealth)
+
+heatmap(dat)
+
+fetalhealth$percentage_of_time_with_abnormal_long_term_variability
+```
